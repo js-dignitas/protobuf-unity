@@ -11,6 +11,12 @@ namespace E7.Protobuf
         internal static readonly string prefGrpcPath = "ProtobufUnity_GrpcPath";
         internal static readonly string prefLogError = "ProtobufUnity_LogError";
         internal static readonly string prefLogStandard = "ProtobufUnity_LogStandard";
+
+        // This code uses Preferences to store protoc path.  Not really good for automated builds.
+        // Easiest thing to do right now is to create a default protoc location in the project
+        // This code also treats .. as being relative to projection path.
+        internal static readonly string defaultLocalExcPath = "../Tools/protobuf/protoc.exe";
+
         internal static bool enabled
         {
             get
@@ -50,7 +56,7 @@ namespace E7.Protobuf
         {
             get
             {
-                return EditorPrefs.GetString(prefProtocExecutable, "");
+                return EditorPrefs.GetString(prefProtocExecutable, defaultLocalExcPath);
             }
             set
             {
@@ -120,6 +126,7 @@ namespace E7.Protobuf
             EditorGUI.BeginDisabledGroup(!enabled);
 
             EditorGUILayout.HelpBox(@"On Windows put the path to protoc.exe (e.g. C:\My Dir\protoc.exe), on macOS and Linux you can use ""which protoc"" to find its location. (e.g. /usr/local/bin/protoc)", MessageType.Info);
+            EditorGUILayout.HelpBox("If protoc path is prefixed with .. then it will be treated as relative to project path", MessageType.Info);
 
             EditorGUILayout.BeginHorizontal();
             EditorGUILayout.LabelField("Path to protoc", GUILayout.Width(100));
