@@ -56,7 +56,8 @@ namespace E7.Protobuf
         {
             get
             {
-                return EditorPrefs.GetString(prefProtocExecutable, defaultLocalExcPath);
+                string ret = EditorPrefs.GetString(prefProtocExecutable, defaultLocalExcPath);
+                return string.IsNullOrEmpty(ret) ? defaultLocalExcPath : ret;
             }
             set
             {
@@ -69,6 +70,7 @@ namespace E7.Protobuf
             get
             {
                 string ret = EditorPrefs.GetString(prefProtocExecutable, defaultLocalExcPath);
+                ret = string.IsNullOrEmpty(ret) ? defaultLocalExcPath : ret;
                 if (ret.StartsWith(".."))
                     return Path.Combine(Application.dataPath, ret);
                 else
