@@ -68,7 +68,7 @@ namespace E7.Protobuf
         {
             get
             {
-                string ret = EditorPrefs.GetString(prefProtocExecutable, "");
+                string ret = EditorPrefs.GetString(prefProtocExecutable, defaultLocalExcPath);
                 if (ret.StartsWith(".."))
                     return Path.Combine(Application.dataPath, ret);
                 else
