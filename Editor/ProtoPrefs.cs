@@ -148,7 +148,7 @@ namespace E7.Protobuf
 
             if (GUILayout.Button(new GUIContent("Force Compilation")))
             {
-                ProtobufUnityCompiler.CompileAllInProject();
+                ProtobufUnityCompiler.CompileAllInProject(false);
             }
 
             EditorGUI.EndDisabledGroup();
