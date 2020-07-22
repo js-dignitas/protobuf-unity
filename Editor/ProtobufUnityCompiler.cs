@@ -8,11 +8,12 @@ namespace E7.Protobuf
     // Changes taken from https://github.com/GITAI/protobuf-unity/commit/efab3ccd73894075a7581f7bd647e0bf0320b0d4
 
     [InitializeOnLoad]
-    internal class ProtobufUnityCompiler : AssetPostprocessor
+    internal class ProtobufUnityCompiler // : AssetPostprocessor
     {
         static ProtobufUnityCompiler()
         {
-            // Force to convert .proto file to .cs file if .cs files are missed.
+            UnityEngine.Debug.Log("Initializing ProtobufUnityCompiler");
+
             CompileAllInProject(true);
         }
 
@@ -48,9 +49,10 @@ namespace E7.Protobuf
             }
         }
 
-        static bool anyChanges = false;
+#if USE_POSTPROCESS
         static void OnPostprocessAllAssets(string[] importedAssets, string[] deletedAssets, string[] movedAssets, string[] movedFromAssetPaths)
         {
+            bool anyChanges = false;
             anyChanges = false;
             if (ProtoPrefs.enabled == false)
             {
@@ -59,7 +61,7 @@ namespace E7.Protobuf
 
             foreach (string str in importedAssets)
             {
-                if (CompileProtobufAssetPath(str, IncludePaths) == true)
+                if (CompileProtobufAssetPath(str, IncludePaths, true) == true)
                 {
                     anyChanges = true;
                 }
@@ -78,30 +80,21 @@ namespace E7.Protobuf
                 AssetDatabase.Refresh();
             }
         }
-
+#endif
         /// <summary>
         /// Called from Force Compilation button in the prefs.
         /// </summary>
         internal static void CompileAllInProject(bool ifSourceMissing)
         {
-            if (ProtoPrefs.logStandard)
-            {
-                UnityEngine.Debug.Log("Protobuf Unity : Compiling all .proto files in the project...");
-            }
-
             foreach (string s in AllProtoFiles)
             {
-                if (ProtoPrefs.logStandard)
-                {
-                    UnityEngine.Debug.Log("Protobuf Unity : Compiling " + s);
-                }
                 CompileProtobufSystemPath(s, IncludePaths, ifSourceMissing);
             }
             UnityEngine.Debug.Log(nameof(ProtobufUnityCompiler));
-            AssetDatabase.Refresh();
+            AssetDatabase.Refresh(ImportAssetOptions.ForceUpdate);
         }
 
-        private static bool CompileProtobufAssetPath(string assetPath, string[] includePaths)
+        private static bool CompileProtobufAssetPath(string assetPath, string[] includePaths, bool ifSourceMissing)
         {
             string protoFileSystemPath = Directory.GetParent(Application.dataPath) + Path.DirectorySeparatorChar.ToString() + assetPath;
             return CompileProtobufSystemPath(protoFileSystemPath, includePaths, false);
@@ -114,27 +107,31 @@ namespace E7.Protobuf
 
             if (Path.GetExtension(protoFileSystemPath) == ".proto")
             {
+                string csharpFilePath = protoFileSystemPath.Replace(".proto", ".cs");
                 if (ifSourceMissing)
                 {
                     // If .cs file exists, just return
-                    string csharpFilePath = protoFileSystemPath.Replace(".proto", ".cs");
                     if (File.Exists(csharpFilePath))
                     {
                         UnityEngine.Debug.Log("Target cs file exists, skip converting: " + csharpFilePath);
-                        return true;
+                        return false;
                     }
                     else
                     {
                         UnityEngine.Debug.Log("Target cs file does not exist, converting: " + csharpFilePath);
                     }
                 }
+                if (ProtoPrefs.logStandard)
+                {
+                    UnityEngine.Debug.Log("Protobuf Unity : Compiling " + protoFileSystemPath);
+                }
 
                 string outputPath = Path.GetDirectoryName(protoFileSystemPath);
 
-                string options = " --csharp_out \"{0}\" ";
+                string options = $" --csharp_out \"{outputPath}\" ";
                 foreach (string s in includePaths)
                 {
-                    options += string.Format(" --proto_path \"{0}\" ", s);
+                    options += $" --proto_path \"{s}\"";
                 }
 
                 // Checking if the user has set valid path (there is probably a better way)
@@ -144,7 +141,7 @@ namespace E7.Protobuf
                 }
                 //string combinedPath = string.Join(" ", optionFiles.Concat(new string[] { protoFileSystemPath }));
 
-                string finalArguments = string.Format("\"{0}\"", protoFileSystemPath) + string.Format(options, outputPath);
+                string finalArguments = $"\"{protoFileSystemPath}\"" + options;
 
                 if (ProtoPrefs.logStandard)
                 {
@@ -169,14 +166,29 @@ namespace E7.Protobuf
                     {
                         UnityEngine.Debug.Log("Protobuf Unity : " + output);
                     }
-                    UnityEngine.Debug.Log("Protobuf Unity : Compiled " + Path.GetFileName(protoFileSystemPath));
+                    if (error == "")
+                    {
+                        UnityEngine.Debug.Log("Protobuf Unity : Compiled " + Path.GetFileName(protoFileSystemPath));
+                    }
                 }
 
                 if (ProtoPrefs.logError && error != "")
                 {
                     UnityEngine.Debug.LogError("Protobuf Unity : " + error);
                 }
-                return true;
+
+                if (error == "")
+                {
+                    // Get the asset path of the csharp file
+                    string projectPath = Directory.GetParent(Application.dataPath) + "/";
+                    projectPath = projectPath.Replace("\\", "/");
+
+                    csharpFilePath = csharpFilePath.Replace("\\", "/");
+                    string csAssetPath = csharpFilePath.Replace(projectPath, "");
+
+                    // Force import the csharp file
+                    AssetDatabase.ImportAsset(csAssetPath, ImportAssetOptions.ForceUpdate);
+                }
             }
             return false;
         }
